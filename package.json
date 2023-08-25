@@ -1,0 +1,22 @@
+{
+  "name": "tspu",
+  "version": "0.0.0",
+  "description": "Technical tools for danger mitigation",
+  "main": "index.js",
+  "repository": "thepicture/tspu",
+  "scripts": {
+    "test": "node test"
+  },
+  "files": [
+    "index.js"
+  ],
+  "keywords": [
+    "technical",
+    "tools",
+    "danger",
+    "mitigation",
+    "http"
+  ],
+  "author": "thepicture",
+  "license": "ISC"
+}
