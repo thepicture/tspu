@@ -1,5 +1,5 @@
-const { describe, it } = require("node:test");
 const assert = require("node:assert/strict");
+const { describe, it } = require("node:test");
 
 const { http } = require("..");
 
@@ -14,18 +14,18 @@ describe("http", () => {
       assert.strictEqual(actual, expected);
     });
 
-    it("should return false on lowercase http headers", () => {
+    it("should return false on all lowercased http headers", () => {
       const expected = false;
-      const request = `GET / HTTP/1.1\r\nHost: example.com\r\nuser-agent: node\r\n`;
+      const request = `GET / HTTP/1.1\r\nhost: example.com\r\nuser-agent: node\r\n\r\n`;
 
       const actual = http.valid(request);
 
       assert.strictEqual(actual, expected);
     });
 
-    it("should return false on uppercase http headers", () => {
+    it("should return false on all uppercase http headers", () => {
       const expected = false;
-      const request = `GET / HTTP/1.1\r\nhost: example.com\r\nUSER-AGENT: node\r\n`;
+      const request = `GET / HTTP/1.1\r\nHOST: example.com\r\nUSER-AGENT: node\r\n\r\n`;
 
       const actual = http.valid(request);
 
@@ -34,7 +34,25 @@ describe("http", () => {
 
     it("should return true on pascal-case http headers", () => {
       const expected = true;
-      const request = `GET / HTTP/1.1\r\nHost: example.com\r\nUser-Agent: node\r\n`;
+      const request = `GET / HTTP/1.1\r\nHost: example.com\r\nUser-Agent: node\r\n\r\n`;
+
+      const actual = http.valid(request);
+
+      assert.strictEqual(actual, expected);
+    });
+
+    it("should return false on pascal-case http headers with uppercase at end", () => {
+      const expected = false;
+      const request = `GET / HTTP/1.1\r\nHost: example.com\r\nUser-AgenT: node\r\n\r\n`;
+
+      const actual = http.valid(request);
+
+      assert.strictEqual(actual, expected);
+    });
+
+    it("should return false on pascal-case http headers with uppercase at middle of word", () => {
+      const expected = false;
+      const request = `GET / HTTP/1.1\r\nHost: example.com\r\nUser-AgEnt: node\r\n\r\n`;
 
       const actual = http.valid(request);
 
@@ -43,7 +61,7 @@ describe("http", () => {
 
     it("should return false on no space after semicolon", () => {
       const expected = false;
-      const request = `GET / HTTP/1.1\r\nHost:example.com\r\nUser-Agent: node\r\n`;
+      const request = `GET / HTTP/1.1\r\nHost:example.com\r\nUser-Agent: node\r\n\r\n`;
 
       const actual = http.valid(request);
 
@@ -52,7 +70,7 @@ describe("http", () => {
 
     it("should return false on additional spaces in request line before method", () => {
       const expected = false;
-      const request = `GET  / HTTP/1.1\r\nHost: example.com\r\nUser-Agent: node\r\n`;
+      const request = `GET  / HTTP/1.1\r\nHost: example.com\r\nUser-Agent: node\r\n\r\n`;
 
       const actual = http.valid(request);
 
@@ -61,7 +79,7 @@ describe("http", () => {
 
     it("should return false on additional spaces in request line after method", () => {
       const expected = false;
-      const request = `  GET  / HTTP/1.1\r\nHost: example.com\r\nUser-Agent: node\r\n`;
+      const request = `  GET  / HTTP/1.1\r\nHost: example.com\r\nUser-Agent: node\r\n\r\n`;
 
       const actual = http.valid(request);
 
@@ -70,7 +88,7 @@ describe("http", () => {
 
     it("should return false on additional spaces in request line after path", () => {
       const expected = false;
-      const request = `GET /  HTTP/1.1\r\nHost: example.com\r\nUser-Agent: node\r\n`;
+      const request = `GET /  HTTP/1.1\r\nHost: example.com\r\nUser-Agent: node\r\n\r\n`;
 
       const actual = http.valid(request);
 
@@ -79,7 +97,52 @@ describe("http", () => {
 
     it("should return true on valid request line", () => {
       const expected = true;
-      const request = `GET /path/to/file HTTP/1.1\r\nHost: example.com\r\nUser-Agent: node\r\n`;
+      const request = `GET /path/to/file HTTP/1.1\r\nHost: example.com\r\nUser-Agent: node\r\n\r\n`;
+
+      const actual = http.valid(request);
+
+      assert.strictEqual(actual, expected);
+    });
+
+    it("should return false on mixed pascal-case header keys", () => {
+      const expected = false;
+      const request = `GET /path/to/file HTTP/1.1\r\nHost: example.com\r\nUser-AgEnt: node\r\n\r\n`;
+
+      const actual = http.valid(request);
+
+      assert.strictEqual(actual, expected);
+    });
+
+    it("should return false on malformed headers spacing", () => {
+      const expected = false;
+      const request = `GET /path/to/file HTTP/1.1\r\nAccept: text/html\r\n\r\nHost: example.com\r\nUser-Agent: node\r\n\r\n`;
+
+      const actual = http.valid(request);
+
+      assert.strictEqual(actual, expected);
+    });
+
+    it("should return false on not one space after semicolon", () => {
+      const expected = false;
+      const request = `GET /path/to/file HTTP/1.1\r\nAccept: text/html\r\nHost:  example.com\r\nUser-Agent: node\r\n\r\n`;
+
+      const actual = http.valid(request);
+
+      assert.strictEqual(actual, expected);
+    });
+
+    it("should return false on space before semicolon", () => {
+      const expected = false;
+      const request = `GET /path/to/file HTTP/1.1\r\nAccept: text/html\r\nHost : example.com\r\nUser-Agent: node\r\n\r\n`;
+
+      const actual = http.valid(request);
+
+      assert.strictEqual(actual, expected);
+    });
+
+    it("should return true on special upper-case headers", () => {
+      const expected = true;
+      const request = `GET /path/to/file HTTP/1.1\r\nDNT: 1\r\nHost: example.com\r\nUser-Agent: node\r\n\r\n`;
 
       const actual = http.valid(request);
 
