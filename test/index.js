@@ -201,5 +201,196 @@ describe("http", () => {
 
       assert.strictEqual(actual, expected);
     });
+
+    it("should return true for blocked ip request with many domains", () => {
+      const expected = true;
+      const domains = [["example.com", "123.123.123.123"]];
+      const request =
+        "GET /path/to/file HTTP/1.1\r\nHost: 123.123.123.123\r\nUser-Agent: node\r\n\r\n";
+
+      const actual = http.blocked(request, domains);
+
+      assert.strictEqual(actual, expected);
+    });
+
+    it("should return true for blocked domain request with many domains", () => {
+      const expected = true;
+      const domains = [["example.com", "123.123.123.123"]];
+      const request =
+        "GET /path/to/file HTTP/1.1\r\nHost: example.com\r\nUser-Agent: node\r\n\r\n";
+
+      const actual = http.blocked(request, domains);
+
+      assert.strictEqual(actual, expected);
+    });
+
+    it("should return true for blocked domain request and port with many domains", () => {
+      const expected = true;
+      const domains = [["example.com", "123.123.123.123"]];
+      const request =
+        "GET /path/to/file HTTP/1.1\r\nHost: 123.123.123.123:443\r\nUser-Agent: node\r\n\r\n";
+
+      const actual = http.blocked(request, domains);
+
+      assert.strictEqual(actual, expected);
+    });
+
+    it("should return true for blocked domain request and port should not matter with many domains", () => {
+      const expected = true;
+      const domains = [["example.com", "123.123.123.123"]];
+      const request =
+        "GET /path/to/file HTTP/1.1\r\nHost: 123.123.123.123:1337\r\nUser-Agent: node\r\n\r\n";
+
+      const actual = http.blocked(request, domains);
+
+      assert.strictEqual(actual, expected);
+    });
+
+    it("should return false for blocked domain request and port should not matter with many domains", () => {
+      const expected = false;
+      const domains = [["example.com", "123.123.123.123"]];
+      const request =
+        "GET /path/to/file HTTP/1.1\r\nHost: 123.123.123.124:1337\r\nUser-Agent: node\r\n\r\n";
+
+      const actual = http.blocked(request, domains);
+
+      assert.strictEqual(actual, expected);
+    });
+
+    it("should not block other but given ports in domain with port if specified in domain", () => {
+      const expected = false;
+      const domains = [["example.com", "123.123.123.123:443"]];
+      const request =
+        "GET /path/to/file HTTP/1.1\r\nHost: example.com:80\r\nUser-Agent: node\r\n\r\n";
+
+      const actual = http.blocked(request, domains);
+
+      assert.strictEqual(actual, expected);
+    });
+
+    it("should block given port in domain with port if specified in domain host", () => {
+      const expected = true;
+      const domains = [["example.com", "123.123.123.123:80"]];
+      const request =
+        "GET /path/to/file HTTP/1.1\r\nHost: example.com:80\r\nUser-Agent: node\r\n\r\n";
+
+      const actual = http.blocked(request, domains);
+
+      assert.strictEqual(actual, expected);
+    });
+
+    it("should block subdomain", () => {
+      const expected = true;
+      const domains = [["example.com", "123.123.123.123:80"]];
+      const request =
+        "GET /path/to/file HTTP/1.1\r\nHost: api.example.com:80\r\nUser-Agent: node\r\n\r\n";
+
+      const actual = http.blocked(request, domains);
+
+      assert.strictEqual(actual, expected);
+    });
+
+    it("should not block domain without port and ip specifying port", () => {
+      const expected = false;
+      const domains = [["example.com", "123.123.123.123:443"]];
+      const request =
+        "GET /path/to/file HTTP/1.1\r\nHost: api.example.com\r\nUser-Agent: node\r\n\r\n";
+
+      const actual = http.blocked(request, domains);
+
+      assert.strictEqual(actual, expected);
+    });
+
+    it("should block domain without port and ip specifying port", () => {
+      const expected = true;
+      const domains = [["example.com", "123.123.123.123:443"]];
+      const request =
+        "GET /path/to/file HTTP/1.1\r\nHost: api.example.com:443\r\nUser-Agent: node\r\n\r\n";
+
+      const actual = http.blocked(request, domains);
+
+      assert.strictEqual(actual, expected);
+    });
+
+    it("should block domain without port but with ip specifying port in one of domains", () => {
+      const expected = true;
+      const domains = [
+        ["example.com", "123.123.123.123:1335"],
+        ["example.com", "123.123.123.123:1336"],
+        ["example.com", "123.123.123.123:1337"],
+        ["example.com", "123.123.123.123:1338"],
+      ];
+      const request =
+        "GET /path/to/file HTTP/1.1\r\nHost: api.example.com:1337\r\nUser-Agent: node\r\n\r\n";
+
+      const actual = http.blocked(request, domains);
+
+      assert.strictEqual(actual, expected);
+    });
+
+    it("should not block subdomain if subdomain in domains specified and given another", () => {
+      const expected = false;
+      const domains = [["api.example.com", "123.123.123.123:80"]];
+      const request =
+        "GET /path/to/file HTTP/1.1\r\nHost: abi.example.com:80\r\nUser-Agent: node\r\n\r\n";
+
+      const actual = http.blocked(request, domains);
+
+      assert.strictEqual(actual, expected);
+    });
+
+    it("should block request without host", () => {
+      const expected = true;
+      const domains = [["api.example.com", "123.123.123.123:80"]];
+      const request = "GET /path/to/file HTTP/1.1\r\nUser-Agent: node\r\n\r\n";
+
+      const actual = http.blocked(request, domains);
+
+      assert.strictEqual(actual, expected);
+    });
+
+    it("should not depend on order of domain entries when domain and port", () => {
+      const expected = true;
+      const domains = [["123.123.123.123:80", "example.com"]];
+      const request =
+        "GET /path/to/file HTTP/1.1\r\nHost: example.com:80\r\nUser-Agent: node\r\n\r\n";
+
+      const actual = http.blocked(request, domains);
+
+      assert.strictEqual(actual, expected);
+    });
+
+    it("should not depend on order of domain entries when domain and no port", () => {
+      const expected = true;
+      const domains = [["123.123.123.123", "example.com"]];
+      const request =
+        "GET /path/to/file HTTP/1.1\r\nHost: example.com\r\nUser-Agent: node\r\n\r\n";
+
+      const actual = http.blocked(request, domains);
+
+      assert.strictEqual(actual, expected);
+    });
+
+    it("should not depend on order of domain entries when subdomain and no port", () => {
+      const expected = true;
+      const domains = [["123.123.123.123", "api.example.com"]];
+      const request =
+        "GET /path/to/file HTTP/1.1\r\nHost: api.example.com\r\nUser-Agent: node\r\n\r\n";
+
+      const actual = http.blocked(request, domains);
+
+      assert.strictEqual(actual, expected);
+    });
+
+    it("should not depend on order of domain entries when ip", () => {
+      const expected = true;
+      const domains = [["123.123.123.123", "api.example.com"]];
+      const request =
+        "GET /path/to/file HTTP/1.1\r\nHost: 123.123.123.123\r\nUser-Agent: node\r\n\r\n";
+
+      const actual = http.blocked(request, domains);
+
+      assert.strictEqual(actual, expected);
+    });
   });
 });
