@@ -1,7 +1,7 @@
 const assert = require("node:assert/strict");
 const { describe, it } = require("node:test");
 
-const { http } = require("..");
+const { http, tcp } = require("..");
 
 describe("http", () => {
   describe("valid", () => {
@@ -392,5 +392,63 @@ describe("http", () => {
 
       assert.strictEqual(actual, expected);
     });
+  });
+});
+
+describe("tcp", () => {
+  it("should detect openvpn with comma separated arguments", () => {
+    const expected = true;
+    const session = new tcp.Session();
+
+    session.feed(0x04, 0x00, 0x00, 0x00);
+    session.feed(0x13, 0x37, 0x13, 0x37);
+    const actual = session.blocked();
+
+    assert.strictEqual(actual, expected);
+  });
+
+  it("should detect openvpn with array argument", () => {
+    const expected = true;
+    const session = new tcp.Session();
+
+    session.feed([0x04, 0x00, 0x00, 0x00]);
+    session.feed([0x13, 0x37, 0x13, 0x37]);
+    const actual = session.blocked();
+
+    assert.strictEqual(actual, expected);
+  });
+
+  it("should detect openvpn with typed array", () => {
+    const expected = true;
+    const session = new tcp.Session();
+
+    session.feed(new Uint8Array([0x04, 0x00, 0x00, 0x00]));
+    session.feed(new Uint8Array([0x13, 0x37, 0x13, 0x37]));
+    const actual = session.blocked();
+
+    assert.strictEqual(actual, expected);
+  });
+
+  it("should not detect banned protocol", () => {
+    const expected = false;
+    const session = new tcp.Session();
+
+    session.feed(new Uint8Array([0x03, 0x00, 0x00, 0x00]));
+    session.feed(new Uint8Array([0x13, 0x37, 0x13, 0x37]));
+    const actual = session.blocked();
+
+    assert.strictEqual(actual, expected);
+  });
+
+  it("should detect openvpn with leading zero bytes", () => {
+    const expected = true;
+    const session = new tcp.Session();
+
+    session.feed(new Uint8Array([0x00, 0x00, 0x00, 0x00]));
+    session.feed(new Uint8Array([0x04, 0x00, 0x00, 0x00]));
+    session.feed(new Uint8Array([0x13, 0x37, 0x13, 0x37]));
+    const actual = session.blocked();
+
+    assert.strictEqual(actual, expected);
   });
 });

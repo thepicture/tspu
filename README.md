@@ -19,9 +19,23 @@ type Http = {
   blocked: (request: string, domain: DomainOrDomainEntries) => boolean;
 };
 
+interface TcpSession {
+  blocked: () => boolean;
+  feed: (
+    arrayOrInteger: Number[] | Number | ArrayBuffer | Array<number>
+  ) => void;
+}
+
+type Tcp = {
+  Session: TcpSession;
+};
+
+
 declare module "tspu" {
   export const http: Http;
+  export const tcp: Tcp;
 }
+
 
 ```
 
@@ -68,6 +82,18 @@ http.blocked(
     ["example.com", "123.123.123.123:445"],
   ]
 ); // true
+```
+
+### http
+
+```js
+const { tcp } = require("tspu");
+
+const session = new tcp.Session();
+
+session.feed(0x04, 0x00, 0x00, 0x00); // openvpn handshake
+session.feed(0x13, 0x37, 0x13, 0x37);
+const actual = session.blocked(); // true
 ```
 
 ## Test

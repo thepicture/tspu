@@ -8,6 +8,18 @@ type Http = {
   blocked: (request: string, domain: DomainOrDomainEntries) => boolean;
 };
 
+interface TcpSession {
+  blocked: () => boolean;
+  feed: (
+    arrayOrInteger: Number[] | Number | ArrayBuffer | Array<number>
+  ) => void;
+}
+
+type Tcp = {
+  Session: TcpSession;
+};
+
 declare module "tspu" {
   export const http: Http;
+  export const tcp: Tcp;
 }
