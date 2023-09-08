@@ -1,5 +1,6 @@
 type Ip = string;
 type Domain = string;
+type Bytes = number[];
 
 type DomainOrDomainEntries = Domain | [Domain, Ip][] | [Ip, Domain][];
 
@@ -9,10 +10,12 @@ type Http = {
 };
 
 interface TcpSession {
-  bytes: number[];
+  bytes: Bytes;
+  extensions: Bytes;
 
   blocked: () => boolean;
-  feed: (...arrayOrInteger: number[] | number[][] | ArrayBuffer[]) => void;
+  feed: (...arrayOrInteger: Bytes | Bytes[] | ArrayBuffer[]) => this;
+  extend: (...arrayOrInteger: Bytes | Bytes[] | ArrayBuffer[]) => this;
 }
 
 type Tcp = {
