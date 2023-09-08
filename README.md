@@ -84,7 +84,7 @@ http.blocked(
 ); // true
 ```
 
-### http
+### tcp
 
 ```js
 const { tcp } = require("tspu");
@@ -94,6 +94,19 @@ const session = new tcp.Session();
 session.feed(0x04, 0x00, 0x00, 0x00); // openvpn handshake
 session.feed(0x13, 0x37, 0x13, 0x37);
 const actual = session.blocked(); // true
+```
+
+```js
+import { tcp } from "tspu";
+
+const session = new tcp.Session();
+session.feed(1, 2, 3, 4);
+session.feed(new Uint16Array([1, 2, 3, 4]));
+session.feed([1, 2, 3], [3, 4, 5]);
+session.feed(new Uint16Array([1, 2, 3, 4]), new Uint8Array([5, 6, 7, 8]));
+
+console.log(session.bytes); // number array of the whole bytes feed
+console.log(session.blocked());
 ```
 
 ## Test

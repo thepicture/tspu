@@ -9,14 +9,14 @@ type Http = {
 };
 
 interface TcpSession {
+  bytes: number[];
+
   blocked: () => boolean;
-  feed: (
-    arrayOrInteger: Number[] | Number | ArrayBuffer | Array<number>
-  ) => void;
+  feed: (...arrayOrInteger: number[] | number[][] | ArrayBuffer[]) => void;
 }
 
 type Tcp = {
-  Session: TcpSession;
+  Session: new () => TcpSession;
 };
 
 declare module "tspu" {
