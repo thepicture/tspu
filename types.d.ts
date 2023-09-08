@@ -1,5 +1,6 @@
 type Ip = string;
 type Domain = string;
+type Bytes = number[];
 
 type DomainOrDomainEntries = Domain | [Domain, Ip][] | [Ip, Domain][];
 
@@ -9,14 +10,16 @@ type Http = {
 };
 
 interface TcpSession {
+  bytes: Bytes;
+  extensions: Bytes;
+
   blocked: () => boolean;
-  feed: (
-    arrayOrInteger: Number[] | Number | ArrayBuffer | Array<number>
-  ) => void;
+  feed: (...arrayOrInteger: Bytes | Bytes[] | ArrayBuffer[]) => this;
+  extend: (...arrayOrInteger: Bytes | Bytes[] | ArrayBuffer[]) => this;
 }
 
 type Tcp = {
-  Session: TcpSession;
+  Session: new () => TcpSession;
 };
 
 declare module "tspu" {

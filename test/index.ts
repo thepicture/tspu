@@ -1,7 +1,7 @@
-const assert = require("node:assert/strict");
-const { describe, it } = require("node:test");
+import assert from "node:assert/strict";
+import { describe, it } from "node:test";
 
-const { http, tcp } = require("..");
+import { http, tcp } from "../index";
 
 describe("http", () => {
   describe("valid", () => {
@@ -396,11 +396,13 @@ describe("http", () => {
 });
 
 describe("tcp", () => {
+  const openvpnHandshake = [0x04, 0x00, 0x00, 0x00];
+
   it("should detect openvpn with comma separated arguments", () => {
     const expected = true;
     const session = new tcp.Session();
 
-    session.feed(0x04, 0x00, 0x00, 0x00);
+    session.feed(...openvpnHandshake);
     session.feed(0x13, 0x37, 0x13, 0x37);
     const actual = session.blocked();
 
@@ -411,7 +413,7 @@ describe("tcp", () => {
     const expected = true;
     const session = new tcp.Session();
 
-    session.feed([0x04, 0x00, 0x00, 0x00]);
+    session.feed(openvpnHandshake);
     session.feed([0x13, 0x37, 0x13, 0x37]);
     const actual = session.blocked();
 
@@ -422,14 +424,14 @@ describe("tcp", () => {
     const expected = true;
     const session = new tcp.Session();
 
-    session.feed(new Uint8Array([0x04, 0x00, 0x00, 0x00]));
+    session.feed(new Uint8Array(openvpnHandshake));
     session.feed(new Uint8Array([0x13, 0x37, 0x13, 0x37]));
     const actual = session.blocked();
 
     assert.strictEqual(actual, expected);
   });
 
-  it("should not detect banned protocol", () => {
+  it("should ignore unbanned protocol", () => {
     const expected = false;
     const session = new tcp.Session();
 
@@ -445,8 +447,63 @@ describe("tcp", () => {
     const session = new tcp.Session();
 
     session.feed(new Uint8Array([0x00, 0x00, 0x00, 0x00]));
-    session.feed(new Uint8Array([0x04, 0x00, 0x00, 0x00]));
+    session.feed(new Uint8Array(openvpnHandshake));
     session.feed(new Uint8Array([0x13, 0x37, 0x13, 0x37]));
+    const actual = session.blocked();
+
+    assert.strictEqual(actual, expected);
+  });
+
+  it("should allow to make extensions that block", () => {
+    const expected = true;
+    const session = new tcp.Session();
+    session.extend([0x01, 0x02, 0x03, 0x04]);
+
+    session.feed(new Uint8Array([0x00, 0x00, 0x00, 0x00]));
+    session.feed(new Uint8Array([0x01, 0x02, 0x03, 0x04]));
+    session.feed(new Uint8Array([0x13, 0x37, 0x13, 0x37]));
+    const actual = session.blocked();
+
+    assert.strictEqual(actual, expected);
+  });
+
+  it("should allow to make extensions that block with custom logic", () => {
+    const expected = true;
+    const session = new tcp.Session();
+    session.extend((originalBytes) => originalBytes[7] === 0x08);
+
+    session.feed(new Uint8Array([0x00, 0x00, 0x00, 0x00]));
+    session.feed(new Uint8Array([0x01, 0x02, 0x03, 0x04]));
+    session.feed(new Uint8Array([0x13, 0x37, 0x13, 0x37]));
+    const actual = session.blocked();
+
+    assert.strictEqual(actual, expected);
+  });
+
+  it("should allow to make extensions that ignore legitimate bytes", () => {
+    const expected = false;
+    const session = new tcp.Session();
+    session.extend([0x02, 0x03, 0x04, 0x05]);
+
+    session.feed(new Uint8Array([0x00, 0x00, 0x00, 0x00]));
+    session.feed(new Uint8Array([0x01, 0x02, 0x03, 0x04]));
+    session.feed(new Uint8Array([0x13, 0x37, 0x13, 0x37]));
+    const actual = session.blocked();
+
+    assert.strictEqual(actual, expected);
+  });
+
+  it("should allow fluent usage", () => {
+    const expected = true;
+    const session = new tcp.Session();
+    session
+      .extend([0x01, 0x03, 0x04])
+      .extend([0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08]);
+
+    session
+      .feed(new Uint8Array([0x01, 0x02, 0x03, 0x04]))
+      .feed(new Uint8Array([0x05, 0x06, 0x07, 0x08]))
+      .feed(new Uint8Array([0x5, 0x37, 0x13, 0x37]));
     const actual = session.blocked();
 
     assert.strictEqual(actual, expected);

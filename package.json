@@ -1,11 +1,11 @@
 {
   "name": "tspu",
-  "version": "0.3.1",
+  "version": "0.4.1",
   "description": "Technical tools for danger mitigation",
   "main": "index.js",
   "repository": "thepicture/tspu",
   "scripts": {
-    "test": "node test"
+    "test": "node --loader tsx test"
   },
   "types": "types.d.ts",
   "files": [
@@ -20,5 +20,9 @@
     "http"
   ],
   "author": "thepicture",
-  "license": "ISC"
+  "license": "ISC",
+  "devDependencies": {
+    "@types/node": "20.5.9",
+    "tsx": "3.12.8"
+  }
 }
