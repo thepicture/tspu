@@ -1,6 +1,7 @@
 type Ip = string;
 type Domain = string;
 type Bytes = number[];
+type Ciphers = string[];
 
 type DomainOrDomainEntries = Domain | [Domain, Ip][] | [Ip, Domain][];
 
@@ -16,6 +17,8 @@ interface TcpSession {
   blocked: () => boolean;
   feed: (...arrayOrInteger: Bytes | Bytes[] | ArrayBuffer[]) => this;
   extend: (...arrayOrInteger: Bytes | Bytes[] | ArrayBuffer[]) => this;
+  banCipher: (ciphers: Ciphers) => this;
+  feedCipher: (ciphers: Ciphers) => this;
 }
 
 type Tcp = {

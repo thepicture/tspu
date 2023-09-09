@@ -1,7 +1,31 @@
 import assert from "node:assert/strict";
-import { describe, it } from "node:test";
+import { describe, it as _it } from "node:test";
 
 import { http, tcp } from "../index";
+
+const it = function (
+  name: string,
+  fn?: () => void
+): Promise<typeof _it & { only: () => void }> | Promise<void> {
+  let _name: string = "";
+  let _fn: (() => void) | undefined;
+  let called = false;
+
+  if (_name && _fn && !called) {
+    _it(_name, _fn);
+
+    called = true;
+
+    return Promise.resolve();
+  }
+
+  this.only = () => {
+    _name = name;
+    _fn = fn;
+  };
+
+  return _it(name, fn);
+};
 
 describe("http", () => {
   describe("valid", () => {
@@ -470,7 +494,7 @@ describe("tcp", () => {
   it("should allow to make extensions that block with custom logic", () => {
     const expected = true;
     const session = new tcp.Session();
-    session.extend((originalBytes) => originalBytes[7] === 0x08);
+    session.extend((originalBytes: number[]) => originalBytes[7] === 0x08);
 
     session.feed(new Uint8Array([0x00, 0x00, 0x00, 0x00]));
     session.feed(new Uint8Array([0x01, 0x02, 0x03, 0x04]));
@@ -504,6 +528,104 @@ describe("tcp", () => {
       .feed(new Uint8Array([0x01, 0x02, 0x03, 0x04]))
       .feed(new Uint8Array([0x05, 0x06, 0x07, 0x08]))
       .feed(new Uint8Array([0x5, 0x37, 0x13, 0x37]));
+    const actual = session.blocked();
+
+    assert.strictEqual(actual, expected);
+  });
+
+  it("should not block with empty bytes", () => {
+    const expected = false;
+    const session = new tcp.Session();
+
+    const actual = session.blocked();
+
+    assert.strictEqual(actual, expected);
+  });
+
+  it("should block based on cipher suite", () => {
+    const expected = true;
+    const session = new tcp.Session();
+    session.banCipher(["aes128-gcm-sha256", "aes128-sha"]);
+
+    session.feedCipher(["aes128-gcm-sha256", "aes128-sha"]);
+    const actual = session.blocked();
+
+    assert.strictEqual(actual, expected);
+  });
+
+  it("should respect order of ciphers", () => {
+    const expected = false;
+    const session = new tcp.Session();
+    session.banCipher(["aes128-gcm-sha256", "aes128-sha"]);
+
+    session.feedCipher(["aes128-sha", "aes128-gcm-sha256"]);
+    const actual = session.blocked();
+
+    assert.strictEqual(actual, expected);
+  });
+
+  it("should not block subset cipher", () => {
+    const expected = false;
+    const session = new tcp.Session();
+    session.banCipher(["aes128-gcm-sha256", "aes128-sha"]);
+
+    session.feedCipher(["aes128-gcm-sha256"]);
+    const actual = session.blocked();
+
+    assert.strictEqual(actual, expected);
+  });
+
+  it("should not block superset cipher", () => {
+    const expected = false;
+    const session = new tcp.Session();
+    session.banCipher(["aes128-gcm-sha256", "aes128-sha"]);
+
+    session.feedCipher([
+      "aes128-gcm-sha256",
+      "aes128-sha",
+      "dhe-psk-chacha20-poly1305",
+    ]);
+    const actual = session.blocked();
+
+    assert.strictEqual(actual, expected);
+  });
+
+  it("should not ignore duplicates", () => {
+    const expected = true;
+    const session = new tcp.Session();
+    session.banCipher(["aes128-gcm-sha256", "aes128-sha", "aes128-sha"]);
+
+    session.feedCipher(["aes128-gcm-sha256", "aes128-sha", "aes128-sha"]);
+    const actual = session.blocked();
+
+    assert.strictEqual(actual, expected);
+  });
+
+  it("should allow fluent usage", () => {
+    const expected = true;
+    const session = new tcp.Session();
+    session
+      .banCipher(["aes128-gcm-sha256", "aes128-sha", "aes128-sha"])
+      .banCipher(["aes128-gcm-sha256", "aes128-sha", "aes128-sha"])
+      .banCipher(["aes128-gcm-sha256", "aes128-sha", "aes128-sha"]);
+
+    session
+      .feedCipher(["aes128-gcm-sha256", "aes128-sha", "aes128-sha"])
+      .feedCipher(["aes128-gcm-sha256", "aes128-sha", "aes128-sha"])
+      .feedCipher(["aes128-gcm-sha256", "aes128-sha", "aes128-sha"]);
+    const actual = session.blocked();
+
+    assert.strictEqual(actual, expected);
+  });
+
+  it("should not block empty feed ciphers", () => {
+    const expected = false;
+    const session = new tcp.Session();
+    session
+      .banCipher(["aes128-gcm-sha256", "aes128-sha", "aes128-sha"])
+      .banCipher(["aes128-gcm-sha256", "aes128-sha", "aes128-sha"])
+      .banCipher(["aes128-gcm-sha256", "aes128-sha", "aes128-sha"]);
+
     const actual = session.blocked();
 
     assert.strictEqual(actual, expected);
