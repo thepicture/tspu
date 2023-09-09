@@ -508,4 +508,13 @@ describe("tcp", () => {
 
     assert.strictEqual(actual, expected);
   });
+
+  it("should not block with empty bytes", () => {
+    const expected = false;
+    const session = new tcp.Session();
+
+    const actual = session.blocked();
+
+    assert.strictEqual(actual, expected);
+  });
 });
