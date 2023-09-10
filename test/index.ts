@@ -172,6 +172,69 @@ describe("http", () => {
 
       assert.strictEqual(actual, expected);
     });
+
+    it("should return false on unix EOL", () => {
+      const expected = false;
+      const request = `GET /path/to/file HTTP/1.1\nDNT: 1\nHost: example.com\nUser-Agent: node\n\n`;
+
+      const actual = http.valid(request);
+
+      assert.strictEqual(actual, expected);
+    });
+
+    it("should return false on win EOL before method", () => {
+      const expected = false;
+      const request = `\r\nGET /path/to/file HTTP/1.1\r\nDNT: 1\r\nHost: example.com\r\nUser-Agent: node\r\n\r\n`;
+
+      const actual = http.valid(request);
+
+      assert.strictEqual(actual, expected);
+    });
+
+    it("should return false on extra space after http method", () => {
+      const expected = false;
+      const request = `GET  /path/to/file HTTP/1.1\r\nDNT: 1\r\nHost: example.com\r\nUser-Agent: node\r\n\r\n`;
+
+      const actual = http.valid(request);
+
+      assert.strictEqual(actual, expected);
+    });
+
+    it("should return false on tab encountered in host", () => {
+      const expected = false;
+      const request = `GET /path/to/file HTTP/1.1\r\nDNT: 1\r\nHost: example.\tcom\r\nUser-Agent: node\r\n\r\n`;
+
+      const actual = http.valid(request);
+
+      assert.strictEqual(actual, expected);
+    });
+
+    it("should return false on tab encountered before header name", () => {
+      const expected = false;
+      const request = `GET /path/to/file HTTP/1.1\r\nDNT: 1\r\n\tHost: example.com\r\nUser-Agent: node\r\n\r\n`;
+
+      const actual = http.valid(request);
+
+      assert.strictEqual(actual, expected);
+    });
+
+    it("should return false if host without space", () => {
+      const expected = false;
+      const request = `GET /path/to/file HTTP/1.1\r\nDNT: 1\r\nHost:example.com\r\nUser-Agent: node\r\n\r\n`;
+
+      const actual = http.valid(request);
+
+      assert.strictEqual(actual, expected);
+    });
+
+    it("should return false if encountered header row padding", () => {
+      const expected = false;
+      const request = `GET /path/to/file HTTP/1.1\r\nDNT: 1\r\nHost: a: b: c: d: e: example.com\r\nUser-Agent: node\r\n\r\n`;
+
+      const actual = http.valid(request);
+
+      assert.strictEqual(actual, expected);
+    });
   });
 
   describe("blocked", () => {
