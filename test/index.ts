@@ -693,4 +693,80 @@ describe("tcp", () => {
 
     assert.strictEqual(actual, expected);
   });
+
+  it("should autoblock similar ciphers (default sensitivity 1)", () => {
+    const expected = true;
+    const session = new tcp.Session({ autoblock: true });
+
+    session.banCipher(["aes128-gcm-sha256", "aes128-sha", "aes128-sha"]);
+
+    session.feedCipher([
+      "aes128-gcm-sha256",
+      "aes128-sha",
+      "aes128-sha",
+      "___",
+    ]);
+
+    const actual = session.blocked();
+
+    assert.strictEqual(actual, expected);
+  });
+
+  it("should autoblock similar ciphers with custom sensitivity", () => {
+    const expected = true;
+    const session = new tcp.Session({ autoblock: true, sensitivity: 2 });
+
+    session.banCipher(["aes128-gcm-sha256", "aes128-sha", "aes128-sha"]);
+
+    session.feedCipher([
+      "aes128-gcm-sha256",
+      "aes128-sha",
+      "___",
+      "aes128-sha",
+      "___",
+    ]);
+
+    const actual = session.blocked();
+
+    assert.strictEqual(actual, expected);
+  });
+
+  it("should not autoblock similar cipher with insufficient sensitivity", () => {
+    const expected = false;
+    const session = new tcp.Session({ autoblock: true });
+
+    session.banCipher(["aes128-gcm-sha256", "aes128-sha", "aes128-sha"]);
+
+    session.feedCipher([
+      "aes128-gcm-sha256",
+      "aes128-sha",
+      "___",
+      "aes128-sha",
+      "___",
+    ]);
+
+    const actual = session.blocked();
+
+    assert.strictEqual(actual, expected);
+  });
+
+  it("should allow to omit autoblock if sensitivity provided", () => {
+    const expected = true;
+    const session = new tcp.Session({ sensitivity: 2 });
+
+    session.banCipher(["aes128-gcm-sha256", "aes128-sha", "aes128-sha"]);
+
+    session.feedCipher([
+      "aes128-gcm-sha256",
+      "aes128-sha",
+      "___",
+      "aes128-sha",
+      "___",
+    ]);
+
+    const actual = session.blocked();
+
+    assert.strictEqual(session.autoblock, true);
+    assert.strictEqual(actual, expected);
+  });
 });
