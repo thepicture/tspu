@@ -10,6 +10,11 @@ type Http = {
   blocked: (request: string, domain: DomainOrDomainEntries) => boolean;
 };
 
+type SessionOptions = {
+  autoblock?: boolean;
+  sensitivity?: number;
+};
+
 interface TcpSession {
   bytes: Bytes;
   extensions: Bytes;
@@ -22,7 +27,7 @@ interface TcpSession {
 }
 
 type Tcp = {
-  Session: new () => TcpSession;
+  Session: new (options?: SessionOptions) => TcpSession;
 };
 
 declare module "tspu" {
