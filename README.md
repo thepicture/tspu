@@ -128,6 +128,34 @@ session
 console.log(session.blocked());
 ```
 
+Cipher manual block
+
+```js
+const session = new tcp.Session();
+session.banCipher(["aes128-gcm-sha256", "aes128-sha", "aes128-sha"]);
+
+session.feedCipher(["aes128-gcm-sha256", "aes128-sha", "aes128-sha"]);
+session.blocked(); // true
+```
+
+Cipher autoblock based on diff between the known and the current cipher
+
+```js
+const session = new tcp.Session({ autoblock: true, sensitivity: 2 });
+
+session.banCipher(["aes128-gcm-sha256", "aes128-sha", "aes128-sha"]);
+
+session.feedCipher([
+  "aes128-gcm-sha256",
+  "aes128-sha",
+  "___",
+  "aes128-sha",
+  "___",
+]);
+
+session.blocked(); // true
+```
+
 ## Test
 
 ```js
