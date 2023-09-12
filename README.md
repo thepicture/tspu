@@ -9,8 +9,12 @@
 ## API
 
 ```js
-type Domain = string;
+import EventEmitter from "node:events";
+
 type Ip = string;
+type Domain = string;
+type Bytes = number[];
+type Ciphers = string[];
 
 type DomainOrDomainEntries = Domain | [Domain, Ip][] | [Ip, Domain][];
 
@@ -19,24 +23,28 @@ type Http = {
   blocked: (request: string, domain: DomainOrDomainEntries) => boolean;
 };
 
-interface TcpSession {
+type SessionOptions = {
+  autoblock?: boolean;
+  sensitivity?: number;
+};
+
+interface TcpSession extends EventEmitter {
+  bytes: Bytes;
+  extensions: Bytes;
+
   blocked: () => boolean;
-  feed: (
-    arrayOrInteger: Number[] | Number | ArrayBuffer | Array<number>
-  ) => void;
+  feed: (...arrayOrInteger: Bytes | Bytes[] | ArrayBuffer[]) => this;
+  extend: (...arrayOrInteger: Bytes | Bytes[] | ArrayBuffer[]) => this;
+  banCipher: (ciphers: Ciphers) => this;
+  feedCipher: (ciphers: Ciphers) => this;
 }
 
 type Tcp = {
-  Session: TcpSession;
+  Session: new (options?: SessionOptions) => TcpSession;
 };
 
-
-declare module "tspu" {
-  export const http: Http;
-  export const tcp: Tcp;
-}
-
-
+export const http: Http;
+export const tcp: Tcp;
 ```
 
 ### http
