@@ -27,6 +27,8 @@ const it = function (
   return _it(name, fn);
 };
 
+const isString = (target: any) => typeof target === "string";
+
 describe("http", () => {
   describe("valid", () => {
     it("should return false on empty request", () => {
@@ -768,5 +770,56 @@ describe("tcp", () => {
 
     assert.strictEqual(session.autoblock, true);
     assert.strictEqual(actual, expected);
+  });
+
+  it("should trigger blocked event", () => {
+    const session = new tcp.Session({ sensitivity: 2 });
+    session.banCipher(["aes128-gcm-sha256", "aes128-sha", "aes128-sha"]);
+
+    session.on("blocked", () => assert.ok(true));
+
+    session.feedCipher([
+      "aes128-gcm-sha256",
+      "aes128-sha",
+      "___",
+      "aes128-sha",
+      "___",
+    ]);
+  });
+
+  it("should not trigger blocked event", () => {
+    const expected = true;
+    const session = new tcp.Session({ sensitivity: 1 });
+    session.banCipher(["aes128-gcm-sha256", "aes128-sha", "aes128-sha"]);
+    session.on("blocked", assert.fail);
+
+    session.feedCipher([
+      "aes128-gcm-sha256",
+      "aes128-sha",
+      "___",
+      "aes128-sha",
+      "___",
+    ]);
+
+    assert.ok(expected);
+  });
+
+  it("should include reason", () => {
+    const session = new tcp.Session({ sensitivity: 2 });
+    session.banCipher(["aes128-gcm-sha256", "aes128-sha", "aes128-sha"]);
+
+    session.on("blocked", ({ ciphers }) => {
+      assert.ok(ciphers);
+      assert.ok(Array.isArray(ciphers));
+      assert.ok(ciphers.every(isString));
+    });
+
+    session.feedCipher([
+      "aes128-gcm-sha256",
+      "aes128-sha",
+      "___",
+      "aes128-sha",
+      "___",
+    ]);
   });
 });

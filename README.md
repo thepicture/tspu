@@ -164,6 +164,14 @@ session.feedCipher([
 session.blocked(); // true
 ```
 
+`tcp` module allows to subscribe to `blocked` event
+
+```js
+session.on("blocked", (reason) => {
+  console.log(reason.ciphers);
+});
+```
+
 ## Test
 
 ```js
