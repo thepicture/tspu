@@ -1,3 +1,5 @@
+import EventEmitter from "node:events";
+
 type Ip = string;
 type Domain = string;
 type Bytes = number[];
@@ -15,7 +17,7 @@ type SessionOptions = {
   sensitivity?: number;
 };
 
-interface TcpSession {
+interface TcpSession extends EventEmitter {
   bytes: Bytes;
   extensions: Bytes;
 
@@ -30,7 +32,5 @@ type Tcp = {
   Session: new (options?: SessionOptions) => TcpSession;
 };
 
-declare module "tspu" {
-  export const http: Http;
-  export const tcp: Tcp;
-}
+export const http: Http;
+export const tcp: Tcp;
