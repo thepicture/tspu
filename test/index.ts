@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
 import { describe, it as _it } from "node:test";
+import { Http2ServerRequest } from "node:http2";
 
-import { http, tcp } from "../index";
+import { http, http2, tcp } from "../index";
 
 const it = function (
   name: string,
@@ -821,5 +822,145 @@ describe("tcp", () => {
       "aes128-sha",
       "___",
     ]);
+  });
+});
+
+describe("http2", () => {
+  it("should ban window size", () => {
+    const expected = false;
+    const session = {
+      stream: {
+        state: {
+          localWindowSize: 16,
+        },
+      },
+    } as Http2ServerRequest;
+
+    const firewall = new http2.Firewall({
+      rules: {
+        localWindowSize: {
+          not: {
+            in: [16],
+          },
+        },
+      },
+    });
+
+    const actual = firewall.legit(session);
+
+    assert.strictEqual(actual, expected);
+  });
+
+  it("should allow window size", () => {
+    const expected = true;
+    const session = {
+      stream: {
+        state: {
+          localWindowSize: 16,
+        },
+      },
+    } as Http2ServerRequest;
+
+    const firewall = new http2.Firewall({
+      rules: {
+        localWindowSize: {
+          in: [16],
+        },
+      },
+    });
+
+    const actual = firewall.legit(session);
+
+    assert.strictEqual(actual, expected);
+  });
+
+  it("should allow multiple values in rules filter", () => {
+    const firewall = new http2.Firewall({
+      rules: {
+        localWindowSize: {
+          in: [16, 17],
+        },
+      },
+    });
+
+    const actual1 = firewall.legit({
+      stream: {
+        state: {
+          localWindowSize: 15,
+        },
+      },
+    } as Http2ServerRequest);
+    const actual2 = firewall.legit({
+      stream: {
+        state: {
+          localWindowSize: 16,
+        },
+      },
+    } as Http2ServerRequest);
+    const actual3 = firewall.legit({
+      stream: {
+        state: {
+          localWindowSize: 17,
+        },
+      },
+    } as Http2ServerRequest);
+    const actual4 = firewall.legit({
+      stream: {
+        state: {
+          localWindowSize: 18,
+        },
+      },
+    } as Http2ServerRequest);
+
+    assert.strictEqual(actual1, false);
+    assert.strictEqual(actual2, true);
+    assert.strictEqual(actual3, true);
+    assert.strictEqual(actual4, false);
+  });
+
+  it("should accept 'not' operator", () => {
+    const firewall = new http2.Firewall({
+      rules: {
+        localWindowSize: {
+          not: {
+            in: [16, 17],
+          },
+        },
+      },
+    });
+
+    const actual1 = firewall.legit({
+      stream: {
+        state: {
+          localWindowSize: 15,
+        },
+      },
+    } as Http2ServerRequest);
+    const actual2 = firewall.legit({
+      stream: {
+        state: {
+          localWindowSize: 16,
+        },
+      },
+    } as Http2ServerRequest);
+    const actual3 = firewall.legit({
+      stream: {
+        state: {
+          localWindowSize: 17,
+        },
+      },
+    } as Http2ServerRequest);
+    const actual4 = firewall.legit({
+      stream: {
+        state: {
+          localWindowSize: 18,
+        },
+      },
+    } as Http2ServerRequest);
+
+    assert.strictEqual(actual1, true);
+    assert.strictEqual(actual2, false);
+    assert.strictEqual(actual3, false);
+    assert.strictEqual(actual4, true);
   });
 });

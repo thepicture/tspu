@@ -1,4 +1,5 @@
 import EventEmitter from "node:events";
+import { Http2ServerRequest, StreamState } from "node:http2";
 
 type Ip = string;
 type Domain = string;
@@ -17,6 +18,24 @@ type SessionOptions = {
   sensitivity?: number;
 };
 
+type FirewallRuleDictionary =
+  | {
+      [key: string]: {
+        in: number[];
+      };
+    }
+  | {
+      [key: string]: {
+        not: {
+          in: number[];
+        };
+      };
+    };
+
+type FirewallOptions = {
+  rules: FirewallRuleDictionary;
+};
+
 interface TcpSession extends EventEmitter {
   bytes: Bytes;
   extensions: Bytes;
@@ -28,9 +47,20 @@ interface TcpSession extends EventEmitter {
   feedCipher: (ciphers: Ciphers) => this;
 }
 
+interface Firewall {
+  state: FirewallOptions;
+
+  legit: (session: Http2ServerRequest) => boolean;
+}
+
 type Tcp = {
   Session: new (options?: SessionOptions) => TcpSession;
 };
 
+type Http2 = {
+  Firewall: new (options?: FirewallOptions) => Firewall;
+};
+
+export const http2: Http2;
 export const http: Http;
 export const tcp: Tcp;
