@@ -826,6 +826,44 @@ describe("tcp", () => {
 });
 
 describe("http2", () => {
+  it("should make falsy argument not legit", () => {
+    const expected = false;
+    const session = null;
+
+    const firewall = new http2.Firewall({
+      rules: {
+        localWindowSize: {
+          not: {
+            in: [],
+          },
+        },
+      },
+    });
+
+    const actual = firewall.legit(session);
+
+    assert.strictEqual(actual, expected);
+  });
+
+  it("should make empty object not legit", () => {
+    const expected = false;
+    const session = {};
+
+    const firewall = new http2.Firewall({
+      rules: {
+        localWindowSize: {
+          not: {
+            in: [],
+          },
+        },
+      },
+    });
+
+    const actual = firewall.legit(session);
+
+    assert.strictEqual(actual, expected);
+  });
+
   it("should ban window size", () => {
     const expected = false;
     const session = {
@@ -962,5 +1000,396 @@ describe("http2", () => {
     assert.strictEqual(actual2, false);
     assert.strictEqual(actual3, false);
     assert.strictEqual(actual4, true);
+  });
+
+  it("should work with non-overlapping multifilter", () => {
+    const firewall = new http2.Firewall({
+      rules: {
+        localWindowSize: {
+          in: [16, 17],
+          not: {
+            in: [15, 18],
+          },
+        },
+      },
+    });
+
+    const actual1 = firewall.legit({
+      stream: {
+        state: {
+          localWindowSize: 15,
+        },
+      },
+    } as Http2ServerRequest);
+    const actual2 = firewall.legit({
+      stream: {
+        state: {
+          localWindowSize: 16,
+        },
+      },
+    } as Http2ServerRequest);
+    const actual3 = firewall.legit({
+      stream: {
+        state: {
+          localWindowSize: 17,
+        },
+      },
+    } as Http2ServerRequest);
+    const actual4 = firewall.legit({
+      stream: {
+        state: {
+          localWindowSize: 18,
+        },
+      },
+    } as Http2ServerRequest);
+
+    assert.strictEqual(actual1, false);
+    assert.strictEqual(actual2, true);
+    assert.strictEqual(actual3, true);
+    assert.strictEqual(actual4, false);
+  });
+
+  it("should work with overlapping multifilter", () => {
+    const firewall = new http2.Firewall({
+      rules: {
+        localWindowSize: {
+          in: [15, 16, 17, 18],
+          not: {
+            in: [16, 17],
+          },
+        },
+      },
+    });
+
+    const actual1 = firewall.legit({
+      stream: {
+        state: {
+          localWindowSize: 15,
+        },
+      },
+    } as Http2ServerRequest);
+    const actual2 = firewall.legit({
+      stream: {
+        state: {
+          localWindowSize: 16,
+        },
+      },
+    } as Http2ServerRequest);
+    const actual3 = firewall.legit({
+      stream: {
+        state: {
+          localWindowSize: 17,
+        },
+      },
+    } as Http2ServerRequest);
+    const actual4 = firewall.legit({
+      stream: {
+        state: {
+          localWindowSize: 18,
+        },
+      },
+    } as Http2ServerRequest);
+
+    assert.strictEqual(actual1, true);
+    assert.strictEqual(actual2, false);
+    assert.strictEqual(actual3, false);
+    assert.strictEqual(actual4, true);
+  });
+
+  it("should make permanent not legit with empty 'in' filter", () => {
+    const expected = false;
+    const firewall = new http2.Firewall({
+      rules: {
+        localWindowSize: {
+          in: [],
+        },
+      },
+    });
+
+    const actual = firewall.legit({
+      stream: {
+        state: {
+          localWindowSize: 15,
+        },
+      },
+    } as Http2ServerRequest);
+
+    assert.strictEqual(actual, expected);
+  });
+
+  it("should make permanent true with empty 'not in' filter", () => {
+    const expected = true;
+    const firewall = new http2.Firewall({
+      rules: {
+        localWindowSize: {
+          not: {
+            in: [],
+          },
+        },
+      },
+    });
+
+    const actual = firewall.legit({
+      stream: {
+        state: {
+          localWindowSize: 15,
+        },
+      },
+    } as Http2ServerRequest);
+
+    assert.strictEqual(actual, expected);
+  });
+
+  it("should throw on contradicting rules", () => {
+    const firewall = new http2.Firewall({
+      rules: {
+        localWindowSize: {
+          in: [],
+          not: {
+            in: [],
+          },
+        },
+      },
+    });
+
+    const actual = () =>
+      firewall.legit({
+        stream: {
+          state: {
+            localWindowSize: 15,
+          },
+        },
+      } as Http2ServerRequest);
+
+    assert.throws(actual);
+  });
+
+  it("can work with 'or' operator", () => {
+    const firewall = new http2.Firewall({
+      rules: {
+        localWindowSize: {
+          or: [
+            {
+              in: [1, 2],
+            },
+            {
+              in: [3, 4],
+            },
+          ],
+        },
+      },
+    });
+
+    assert.ok(
+      firewall.legit({
+        stream: {
+          state: {
+            localWindowSize: 1,
+          },
+        },
+      } as Http2ServerRequest)
+    );
+
+    assert.ok(
+      firewall.legit({
+        stream: {
+          state: {
+            localWindowSize: 2,
+          },
+        },
+      } as Http2ServerRequest)
+    );
+
+    assert.ok(
+      firewall.legit({
+        stream: {
+          state: {
+            localWindowSize: 3,
+          },
+        },
+      } as Http2ServerRequest)
+    );
+
+    assert.ok(
+      firewall.legit({
+        stream: {
+          state: {
+            localWindowSize: 4,
+          },
+        },
+      } as Http2ServerRequest)
+    );
+
+    assert.strictEqual(
+      false,
+      firewall.legit({
+        stream: {
+          state: {
+            localWindowSize: 5,
+          },
+        },
+      } as Http2ServerRequest)
+    );
+  });
+
+  it("can work with 'and' and 'not' operator", () => {
+    const firewall = new http2.Firewall({
+      rules: {
+        localWindowSize: {
+          and: [
+            {
+              in: [1, 2],
+            },
+            {
+              not: {
+                in: [3, 4],
+              },
+            },
+          ],
+        },
+      },
+    });
+
+    assert.ok(
+      firewall.legit({
+        stream: {
+          state: {
+            localWindowSize: 1,
+          },
+        },
+      } as Http2ServerRequest)
+    );
+
+    assert.ok(
+      firewall.legit({
+        stream: {
+          state: {
+            localWindowSize: 2,
+          },
+        },
+      } as Http2ServerRequest)
+    );
+
+    assert.strictEqual(
+      false,
+      firewall.legit({
+        stream: {
+          state: {
+            localWindowSize: 3,
+          },
+        },
+      } as Http2ServerRequest)
+    );
+
+    assert.strictEqual(
+      false,
+      firewall.legit({
+        stream: {
+          state: {
+            localWindowSize: 4,
+          },
+        },
+      } as Http2ServerRequest)
+    );
+
+    assert.strictEqual(
+      false,
+      firewall.legit({
+        stream: {
+          state: {
+            localWindowSize: 5,
+          },
+        },
+      } as Http2ServerRequest)
+    );
+  });
+
+  it("can work with any depth", () => {
+    const firewall = new http2.Firewall({
+      rules: {
+        localWindowSize: {
+          or: [
+            {
+              in: [1, 2],
+            },
+            {
+              in: [3, 4],
+            },
+          ],
+          and: [
+            {
+              in: [5, 6],
+            },
+            {
+              not: {
+                in: [7, 8],
+              },
+            },
+          ],
+        },
+      },
+    });
+
+    assert.ok(
+      firewall.legit({
+        stream: {
+          state: {
+            localWindowSize: 1,
+          },
+        },
+      } as Http2ServerRequest)
+    );
+
+    assert.ok(
+      firewall.legit({
+        stream: {
+          state: {
+            localWindowSize: 2,
+          },
+        },
+      } as Http2ServerRequest)
+    );
+
+    assert.ok(
+      firewall.legit({
+        stream: {
+          state: {
+            localWindowSize: 3,
+          },
+        },
+      } as Http2ServerRequest)
+    );
+
+    assert.ok(
+      firewall.legit({
+        stream: {
+          state: {
+            localWindowSize: 4,
+          },
+        },
+      } as Http2ServerRequest)
+    );
+
+    assert.strictEqual(
+      false,
+      firewall.legit({
+        stream: {
+          state: {
+            localWindowSize: 5,
+          },
+        },
+      } as Http2ServerRequest)
+    );
+
+    assert.strictEqual(
+      false,
+      firewall.legit({
+        stream: {
+          state: {
+            localWindowSize: 6,
+          },
+        },
+      } as Http2ServerRequest)
+    );
   });
 });
