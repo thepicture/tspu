@@ -18,22 +18,22 @@ type SessionOptions = {
   sensitivity?: number;
 };
 
-type FirewallRuleDictionary =
+type FirewallRule =
   | {
-      [key: string]: {
+      in: number[];
+    }
+  | {
+      not: {
         in: number[];
       };
     }
   | {
-      [key: string]: {
-        not: {
-          in: number[];
-        };
-      };
+      or?: FirewallRule[];
+      and?: FirewallRule[];
     };
 
-type FirewallOptions = {
-  rules: FirewallRuleDictionary;
+type FirewallRuleDictionary = {
+  [key: string]: FirewallRule;
 };
 
 interface TcpSession extends EventEmitter {
