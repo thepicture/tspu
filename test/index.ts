@@ -238,6 +238,96 @@ describe("http", () => {
 
       assert.strictEqual(actual, expected);
     });
+
+    it("should return false if encountered decoded path traversal", () => {
+      const expected = false;
+      const request = `GET ../path/to/file HTTP/1.1\r\nDNT: 1\r\nHost: example.com\r\nUser-Agent: node\r\n\r\n`;
+
+      const actual = http.valid(request);
+
+      assert.strictEqual(actual, expected);
+    });
+
+    it("should return false if encountered decoded path traversal with newline", () => {
+      const expected = false;
+      const request = `GET\r\n ../path/to/file HTTP/1.1\r\nDNT: 1\r\nHost: example.com\r\nUser-Agent: node\r\n\r\n`;
+
+      const actual = http.valid(request);
+
+      assert.strictEqual(actual, expected);
+    });
+
+    it("should return false if encountered encoded path traversal", () => {
+      const expected = false;
+      const request = `GET %2e%2e%2fpath/to/file HTTP/1.1\r\nDNT: 1\r\nHost: example.com\r\nUser-Agent: node\r\n\r\n`;
+
+      const actual = http.valid(request);
+
+      assert.strictEqual(actual, expected);
+    });
+
+    it("should return false if encountered bad url encoded string", () => {
+      const expected = false;
+      const request = `GET %2e%2e%%2fpath/to/file HTTP/1.1\r\nDNT: 1\r\nHost: example.com\r\nUser-Agent: node\r\n\r\n`;
+
+      const actual = http.valid(request);
+
+      assert.strictEqual(actual, expected);
+    });
+
+    it("should return false if encountered escape unix path", () => {
+      const expected = false;
+      const request = `GET %2e%2e%%2fpath//to//file HTTP/1.1\r\nDNT: 1\r\nHost: example.com\r\nUser-Agent: node\r\n\r\n`;
+
+      const actual = http.valid(request);
+
+      assert.strictEqual(actual, expected);
+    });
+
+    it("should return false if encountered escape win path", () => {
+      const expected = false;
+      const request = `GET %2e%2e%%2fpath\\\\to/file HTTP/1.1\r\nDNT: 1\r\nHost: example.com\r\nUser-Agent: node\r\n\r\n`;
+
+      const actual = http.valid(request);
+
+      assert.strictEqual(actual, expected);
+    });
+
+    it("can detect common traversals", () => {
+      const fails = (request: string) =>
+        assert.strictEqual(false, http.valid(request));
+
+      fails(
+        `GET %2e%2e%2f/path HTTP/1.1\r\nDNT: 1\r\nHost: a.com\r\nUser-Agent: node\r\n\r\n`
+      );
+      fails(
+        `GET %2e%2e/path HTTP/1.1\r\nDNT: 1\r\nHost: a.com\r\nUser-Agent: node\r\n\r\n`
+      );
+      fails(
+        `GET ..%2f/path HTTP/1.1\r\nDNT: 1\r\nHost: a.com\r\nUser-Agent: node\r\n\r\n`
+      );
+      fails(
+        `GET %2e%2e%5c/path HTTP/1.1\r\nDNT: 1\r\nHost: a.com\r\nUser-Agent: node\r\n\r\n`
+      );
+      fails(
+        `GET %2e%2e\/path HTTP/1.1\r\nDNT: 1\r\nHost: a.com\r\nUser-Agent: node\r\n\r\n`
+      );
+      fails(
+        `GET ..%5c/path HTTP/1.1\r\nDNT: 1\r\nHost: a.com\r\nUser-Agent: node\r\n\r\n`
+      );
+      fails(
+        `GET ..%255c/path HTTP/1.1\r\nDNT: 1\r\nHost: a.com\r\nUser-Agent: node\r\n\r\n`
+      );
+      fails(
+        `GET ...%c0%af/path HTTP/1.1\r\nDNT: 1\r\nHost: a.com\r\nUser-Agent: node\r\n\r\n`
+      );
+      fails(
+        `GET ..%c1%9c/path HTTP/1.1\r\nDNT: 1\r\nHost: a.com\r\nUser-Agent: node\r\n\r\n`
+      );
+      fails(
+        `GET %00/path HTTP/1.1\r\nDNT: 1\r\nHost: a.com\r\nUser-Agent: node\r\n\r\n`
+      );
+    });
   });
 
   describe("blocked", () => {
