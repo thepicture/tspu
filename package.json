@@ -1,6 +1,6 @@
 {
   "name": "tspu",
-  "version": "0.10.1",
+  "version": "0.11.1",
   "description": "Technical tools for danger mitigation",
   "main": "index.js",
   "repository": "thepicture/tspu",
